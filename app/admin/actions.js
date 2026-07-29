@@ -6,8 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { ADMIN_COOKIE, createSessionValue, checkPasscode, verifySessionValue } from "@/lib/adminSession";
 
 export async function loginAction(passcode) {
-  if (!process.env.ADMIN_PASSCODE) {
-    return { ok: false, error: "ADMIN_PASSCODE is not configured on the server." };
+  if (!process.env.ADMIN_PASSCODE || !process.env.ADMIN_SESSION_SECRET) {
+    return {
+      ok: false,
+      error: "Admin login isn't fully configured on the server (missing ADMIN_PASSCODE or ADMIN_SESSION_SECRET).",
+    };
   }
   if (!checkPasscode(passcode)) {
     return { ok: false, error: "That's not the right passcode." };
