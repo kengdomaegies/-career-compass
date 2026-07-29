@@ -107,7 +107,7 @@ function SpectrumBar({ poleA, poleB, value, aDesc, bDesc }) {
         <div
           style={{
             position: "absolute",
-            left: `calc(${value}% - 8px)`,
+            left: `calc(${100 - value}% - 8px)`,
             top: -5,
             width: 18,
             height: 18,
