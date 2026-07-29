@@ -8,6 +8,11 @@ const AREA_KEYS = AREAS.map((a) => a.key);
 const DIM_KEYS = STYLE_DIMENSIONS.map((d) => d.key);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// This route can make up to 3 sequential Claude calls (with backoff) plus
+// two email sends, which can add up past Vercel's default function timeout
+// on a slow generation. Give it more headroom.
+export const maxDuration = 60;
+
 export async function POST(req) {
   let body;
   try {
