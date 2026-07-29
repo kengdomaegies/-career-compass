@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// The `id` doubles as the private link token (a UUID has enough entropy
+// to be unguessable — no separate token field needed).
+model Report {
+  id             String   @id @default(uuid())
+  clientName     String?
+  clientEmail    String?
+  interestScores Json
+  styleScores    Json
+  aiContent      Json?
+  error          String?
+  // Append-only log of send attempts: [{ to, purpose, ok, error, sentAt }, ...]
+  emailLog       Json     @default("[]")
+  createdAt      DateTime @default(now())
+}
