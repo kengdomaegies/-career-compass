@@ -35,14 +35,22 @@ export async function logoutAction() {
 }
 
 export async function deleteReportAction(id) {
-  await requireAdmin();
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Your admin session expired — reload the page and log in again." };
+  }
   await prisma.report.delete({ where: { id } });
   revalidatePath("/admin");
   return { ok: true };
 }
 
 export async function regenerateNarrativeAction(id) {
-  await requireAdmin();
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Your admin session expired — reload the page and log in again." };
+  }
 
   const report = await prisma.report.findUnique({ where: { id } });
   if (!report) return { ok: false, error: "Report not found" };

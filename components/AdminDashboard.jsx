@@ -24,19 +24,34 @@ export default function AdminDashboard({ reports }) {
     if (!confirm("Delete this report? This can't be undone.")) return;
     setPendingId(id);
     setPendingAction("delete");
-    await deleteReportAction(id);
-    setItems((prev) => prev.filter((r) => r.id !== id));
-    setPendingId(null);
-    setPendingAction(null);
+    try {
+      const result = await deleteReportAction(id);
+      if (result?.ok === false) {
+        alert(result.error || "Delete failed.");
+      } else {
+        setItems((prev) => prev.filter((r) => r.id !== id));
+      }
+    } catch (e) {
+      alert(e?.message || "Delete failed — try reloading the page.");
+    } finally {
+      setPendingId(null);
+      setPendingAction(null);
+    }
   }
 
   async function handleRegenerate(id) {
     setPendingId(id);
     setPendingAction("regenerate");
-    const result = await regenerateNarrativeAction(id);
-    setItems((prev) => prev.map((r) => (r.id === id ? { ...r, error: result.ok ? null : result.error } : r)));
-    setPendingId(null);
-    setPendingAction(null);
+    try {
+      const result = await regenerateNarrativeAction(id);
+      setItems((prev) => prev.map((r) => (r.id === id ? { ...r, error: result.ok ? null : result.error } : r)));
+    } catch (e) {
+      const error = e?.message || "Regenerate failed — try reloading the page.";
+      setItems((prev) => prev.map((r) => (r.id === id ? { ...r, error } : r)));
+    } finally {
+      setPendingId(null);
+      setPendingAction(null);
+    }
   }
 
   function handleLogout() {
