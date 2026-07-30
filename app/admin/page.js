@@ -7,6 +7,9 @@ import { BG } from "@/lib/theme";
 
 export const metadata = { title: "Admin — Career Compass" };
 export const dynamic = "force-dynamic";
+// The "Regenerate narrative" action can make up to 3 sequential Claude
+// calls with backoff — give it the same headroom as the reports route.
+export const maxDuration = 60;
 
 export default async function AdminPage() {
   const sessionValue = cookies().get(ADMIN_COOKIE)?.value;
@@ -15,7 +18,7 @@ export default async function AdminPage() {
   const reports = authed
     ? await prisma.report.findMany({
         orderBy: { createdAt: "desc" },
-        select: { id: true, clientName: true, clientEmail: true, createdAt: true, interestScores: true },
+        select: { id: true, clientName: true, clientEmail: true, createdAt: true, interestScores: true, error: true },
       })
     : [];
 
