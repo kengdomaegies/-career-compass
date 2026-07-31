@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { Printer, RotateCcw, AlertTriangle, Mail, ArrowLeft } from "lucide-react";
+import { Printer, RotateCcw, AlertTriangle, ArrowLeft } from "lucide-react";
 import { AREAS, STYLE_DIMENSIONS, computeBearing, polarPoint } from "@/lib/scoring";
 import { INK, GREEN, GREEN_DARK, SAGE, CLAY, SLATE, CARD, LINE, FONT_SANS, FONT_DISPLAY } from "@/lib/theme";
 import Logo from "@/components/Logo";
@@ -125,88 +124,8 @@ function SpectrumBar({ poleA, poleB, value, aDesc, bDesc }) {
   );
 }
 
-function SendReportBox({ reportId, defaultEmail }) {
-  const [sendTo, setSendTo] = useState(defaultEmail || "");
-  const [status, setStatus] = useState(null); // null | "sending" | "sent" | "error"
-  const [errorMsg, setErrorMsg] = useState(null);
-
-  async function send() {
-    if (!sendTo) return;
-    setStatus("sending");
-    setErrorMsg(null);
-    try {
-      const res = await fetch(`/api/reports/${reportId}/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: sendTo }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || `request failed (${res.status})`);
-      setStatus("sent");
-    } catch (e) {
-      setStatus("error");
-      setErrorMsg(e.message || "unknown error");
-    }
-  }
-
-  return (
-    <section
-      className="no-print"
-      style={{ marginBottom: 32, background: CARD, border: `1px solid ${LINE}`, borderRadius: 10, padding: "18px 20px" }}
-    >
-      <h3 style={{ fontFamily: FONT_SANS, fontSize: 15, color: INK, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-        <Mail size={16} color={GREEN} /> Send this report
-      </h3>
-      <p style={{ fontSize: 12.5, color: SLATE, marginBottom: 12, lineHeight: 1.6 }}>
-        Enter any email address and we'll send a link to this private report page.
-      </p>
-      <div style={{ display: "flex", gap: 8 }}>
-        <input
-          type="email"
-          value={sendTo}
-          onChange={(e) => {
-            setSendTo(e.target.value);
-            setStatus(null);
-          }}
-          placeholder="name@example.com"
-          style={{
-            flex: 1,
-            padding: "10px 14px",
-            fontSize: 14,
-            border: `1px solid ${LINE}`,
-            borderRadius: 8,
-            fontFamily: "inherit",
-            boxSizing: "border-box",
-          }}
-        />
-        <button
-          onClick={send}
-          disabled={!sendTo || status === "sending"}
-          style={{
-            background: sendTo ? GREEN : LINE,
-            color: sendTo ? "#fff" : "#9CA3AF",
-            border: "none",
-            borderRadius: 8,
-            padding: "10px 18px",
-            fontSize: 14,
-            fontWeight: 600,
-            cursor: sendTo && status !== "sending" ? "pointer" : "default",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {status === "sending" ? "Sending…" : "Send"}
-        </button>
-      </div>
-      {status === "sent" && <p style={{ fontSize: 12, color: GREEN_DARK, marginTop: 8 }}>Sent.</p>}
-      {status === "error" && <p style={{ fontSize: 12, color: CLAY, marginTop: 8 }}>Couldn't send ({errorMsg}).</p>}
-    </section>
-  );
-}
-
 export default function ReportView({
-  id,
   clientName,
-  clientEmail,
   interestScores,
   styleScores,
   aiContent,
@@ -378,7 +297,10 @@ export default function ReportView({
           </section>
         )}
 
-        <SendReportBox reportId={id} defaultEmail={clientEmail} />
+        <p className="no-print" style={{ fontSize: 13, color: SLATE, lineHeight: 1.6, marginBottom: 32 }}>
+          If you'd like a copy, you can save this as a PDF or print it using the button above — or you can
+          request one from your career coach.
+        </p>
 
         <div style={{ borderTop: `1px solid ${LINE}`, paddingTop: 16, marginTop: 40 }}>
           <p style={{ fontSize: 12, color: SLATE, fontStyle: "italic" }}>

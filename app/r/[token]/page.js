@@ -19,9 +19,7 @@ export default async function ReportPage({ params, searchParams }) {
       }}
     >
       <ReportView
-        id={report.id}
         clientName={report.clientName}
-        clientEmail={report.clientEmail}
         interestScores={report.interestScores}
         styleScores={report.styleScores}
         aiContent={report.aiContent}
