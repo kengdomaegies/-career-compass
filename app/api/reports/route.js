@@ -9,7 +9,7 @@ const DIM_KEYS = STYLE_DIMENSIONS.map((d) => d.key);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // This route can make up to 3 sequential Claude calls (with backoff) plus
-// two email sends, which can add up past Vercel's default function timeout
+// an email send, which can add up past Vercel's default function timeout
 // on a slow generation. Give it more headroom.
 export const maxDuration = 60;
 
@@ -52,11 +52,7 @@ export async function POST(req) {
   });
 
   const reportUrl = new URL(`/r/${report.id}`, req.nextUrl.origin).toString();
-  const emailLog = await notifyReportGenerated({
-    clientName: safeClientName,
-    clientEmail: safeClientEmail,
-    reportUrl,
-  });
+  const emailLog = await notifyReportGenerated({ clientName: safeClientName, reportUrl });
   await prisma.report.update({ where: { id: report.id }, data: { emailLog } });
 
   return NextResponse.json({ id: report.id });

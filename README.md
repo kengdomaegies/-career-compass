@@ -80,16 +80,37 @@ client. `/admin`, unlike the report links, does require the passcode.
 ## Email sending
 
 - **Automatic**: every time a report is generated, `OWNER_EMAIL` gets a
-  notification, and the client does too if they entered an email on the
-  intro screen.
+  notification with the link. The client's email is collected on the intro
+  screen for your own records/follow-up, but isn't auto-emailed a copy.
 - **Manual**: the report page has a "Send this report" box that emails the
-  report link to any address, any time.
+  report link to any address, any time (pre-filled with the client's email
+  if they gave one).
 - Resend's default sender (`onboarding@resend.dev`) works without owning a
   domain, which is enough to get started. For production use at any real
   volume, verify your own domain in Resend and point `RESEND_FROM` at it.
 - Every send attempt (automatic or manual) is logged on the report's
   `emailLog` field — check it with `npm run db:studio` if a send seems to
   have gone missing.
+
+## Restricting who can take the assessment
+
+By default the assessment (`/`) is open to anyone with the link. To limit it
+to your own clients: go to `/admin` → **Assessment access** → set a
+passcode. Visitors then have to enter it before they can start the quiz
+(remembered for 30 days per browser). Change or remove it any time, no
+redeploy needed — unlike `ADMIN_PASSCODE`, this one lives in the database.
+
+Two other approaches worth considering if you want tighter control later:
+
+- **Per-client invite links**: generate a unique link per client (instead of
+  a shared passcode) that's tied to one report slot. More setup, but no
+  shared secret to leak, and you can see exactly who used which link.
+- **Expiring links**: add an `expiresAt` to the passcode/session so access
+  automatically closes after a course or engagement ends, rather than
+  staying open until you manually remove it.
+
+Neither is built — the shared passcode is the simplest version that covers
+"keep the general public out." Ask if you want either of the above.
 
 ## Notes / things you may want to add later
 

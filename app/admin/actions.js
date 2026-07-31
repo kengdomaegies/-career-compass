@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { ADMIN_COOKIE, createSessionValue, checkPasscode, verifySessionValue } from "@/lib/adminSession";
 import { generateNarrative } from "@/lib/anthropic";
 import { AREAS } from "@/lib/scoring";
+import { getSetting, setSetting, deleteSetting, QUIZ_PASSCODE_KEY } from "@/lib/settings";
 
 export async function loginAction(passcode) {
   if (!process.env.ADMIN_PASSCODE || !process.env.ADMIN_SESSION_SECRET) {
@@ -69,6 +70,24 @@ export async function regenerateNarrativeAction(id) {
     revalidatePath("/admin");
     return { ok: false, error };
   }
+}
+
+export async function setQuizPasscodeAction(passcode) {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Your admin session expired — reload the page and log in again." };
+  }
+
+  const trimmed = typeof passcode === "string" ? passcode.trim() : "";
+  if (trimmed) {
+    await setSetting(QUIZ_PASSCODE_KEY, trimmed);
+  } else {
+    await deleteSetting(QUIZ_PASSCODE_KEY);
+  }
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { ok: true, passcode: trimmed || null };
 }
 
 async function requireAdmin() {

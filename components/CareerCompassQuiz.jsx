@@ -49,7 +49,7 @@ function Intro({ onStart, clientName, setClientName, clientEmail, setClientEmail
       <input
         value={clientName}
         onChange={(e) => setClientName(e.target.value)}
-        placeholder="Your name (for the report)"
+        placeholder="First and last name (for the report)"
         style={{
           width: "100%",
           padding: "12px 16px",
@@ -64,7 +64,7 @@ function Intro({ onStart, clientName, setClientName, clientEmail, setClientEmail
       <input
         value={clientEmail}
         onChange={(e) => setClientEmail(e.target.value)}
-        placeholder="Your email (optional — so we can send you a copy)"
+        placeholder="Your email (so your coach can follow up with you)"
         type="email"
         style={{
           width: "100%",

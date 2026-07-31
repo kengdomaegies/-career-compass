@@ -21,3 +21,11 @@ model Report {
   emailLog       Json     @default("[]")
   createdAt      DateTime @default(now())
 }
+
+// Simple runtime-editable key/value store — currently just the quiz
+// passcode, which needs to change from the admin UI without a redeploy
+// (unlike env-var-based settings like ADMIN_PASSCODE).
+model Setting {
+  key   String @id
+  value String
+}
