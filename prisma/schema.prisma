@@ -29,3 +29,18 @@ model Setting {
   key   String @id
   value String
 }
+
+// A per-client access link: visiting /start/<id> grants quiz access without
+// a shared passcode. The `id` doubles as the link token, same pattern as
+// Report. Reusable (not single-use) until revoked or past expiresAt, since
+// a client closing the tab mid-quiz shouldn't burn their own link.
+model Invite {
+  id          String    @id @default(uuid())
+  label       String?
+  clientEmail String?
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  firstUsedAt DateTime?
+  usedCount   Int       @default(0)
+  createdAt   DateTime  @default(now())
+}

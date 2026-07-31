@@ -6,7 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { ADMIN_COOKIE, createSessionValue, checkPasscode, verifySessionValue } from "@/lib/adminSession";
 import { generateNarrative } from "@/lib/anthropic";
 import { AREAS } from "@/lib/scoring";
-import { getSetting, setSetting, deleteSetting, QUIZ_PASSCODE_KEY } from "@/lib/settings";
+import { deleteSetting, setQuizPasscodeConfig, QUIZ_PASSCODE_KEY } from "@/lib/settings";
+
+function expiresAtFromDays(days) {
+  const n = Number(days);
+  if (!n || n <= 0) return null;
+  return new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString();
+}
 
 export async function loginAction(passcode) {
   if (!process.env.ADMIN_PASSCODE || !process.env.ADMIN_SESSION_SECRET) {
@@ -72,7 +78,7 @@ export async function regenerateNarrativeAction(id) {
   }
 }
 
-export async function setQuizPasscodeAction(passcode) {
+export async function setQuizPasscodeAction(passcode, expiresInDays) {
   try {
     await requireAdmin();
   } catch {
@@ -80,14 +86,57 @@ export async function setQuizPasscodeAction(passcode) {
   }
 
   const trimmed = typeof passcode === "string" ? passcode.trim() : "";
+  const expiresAt = expiresAtFromDays(expiresInDays);
   if (trimmed) {
-    await setSetting(QUIZ_PASSCODE_KEY, trimmed);
+    await setQuizPasscodeConfig({ passcode: trimmed, expiresAt });
   } else {
     await deleteSetting(QUIZ_PASSCODE_KEY);
   }
   revalidatePath("/admin");
   revalidatePath("/");
-  return { ok: true, passcode: trimmed || null };
+  return { ok: true, passcode: trimmed || null, expiresAt: trimmed ? expiresAt : null };
+}
+
+export async function createInviteAction({ label, clientEmail, expiresInDays }) {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Your admin session expired — reload the page and log in again." };
+  }
+
+  const invite = await prisma.invite.create({
+    data: {
+      label: typeof label === "string" && label.trim() ? label.trim().slice(0, 100) : null,
+      clientEmail: typeof clientEmail === "string" && clientEmail.trim() ? clientEmail.trim().slice(0, 200) : null,
+      expiresAt: expiresAtFromDays(expiresInDays),
+    },
+  });
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { ok: true, invite };
+}
+
+export async function revokeInviteAction(id) {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Your admin session expired — reload the page and log in again." };
+  }
+  await prisma.invite.update({ where: { id }, data: { revokedAt: new Date() } });
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function deleteInviteAction(id) {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Your admin session expired — reload the page and log in again." };
+  }
+  await prisma.invite.delete({ where: { id } });
+  revalidatePath("/admin");
+  revalidatePath("/");
+  return { ok: true };
 }
 
 async function requireAdmin() {

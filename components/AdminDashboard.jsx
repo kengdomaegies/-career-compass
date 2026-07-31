@@ -8,13 +8,14 @@ import { deleteReportAction, logoutAction, regenerateNarrativeAction } from "@/a
 import { AREAS } from "@/lib/scoring";
 import { INK, SLATE, CLAY, GREEN, LINE, FONT_SANS } from "@/lib/theme";
 import QuizAccessSettings from "@/components/QuizAccessSettings";
+import InviteManager from "@/components/InviteManager";
 
 function topAreaOf(interestScores) {
   if (!interestScores) return "—";
   return AREAS.slice().sort((a, b) => interestScores[b.key] - interestScores[a.key])[0].key;
 }
 
-export default function AdminDashboard({ reports, quizPasscode }) {
+export default function AdminDashboard({ reports, quizPasscodeConfig, invites }) {
   const router = useRouter();
   const [items, setItems] = useState(reports);
   const [pendingId, setPendingId] = useState(null);
@@ -78,7 +79,8 @@ export default function AdminDashboard({ reports, quizPasscode }) {
           Log out
         </button>
       </div>
-      <QuizAccessSettings initialPasscode={quizPasscode} />
+      <QuizAccessSettings initialConfig={quizPasscodeConfig} />
+      <InviteManager initialInvites={invites} />
       <h2 style={{ fontFamily: FONT_SANS, fontSize: 22, color: INK, marginBottom: 6 }}>Past reports</h2>
       <p style={{ fontSize: 13, color: SLATE, marginBottom: 24 }}>
         Every report generated in this app, stored so you can revisit them.

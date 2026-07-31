@@ -1,25 +1,28 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { getSetting, QUIZ_PASSCODE_KEY } from "@/lib/settings";
-import { QUIZ_COOKIE, createQuizSessionValue, checkQuizPasscode } from "@/lib/quizSession";
+import { getQuizPasscodeConfig } from "@/lib/settings";
+import { QUIZ_COOKIE, createQuizSessionValue, checkQuizPasscode, sessionTtlMs } from "@/lib/quizSession";
 
 export async function verifyQuizPasscodeAction(passcode) {
-  const expected = await getSetting(QUIZ_PASSCODE_KEY);
-  if (!expected) {
-    // No passcode configured — access is open, nothing to check.
-    return { ok: true };
+  const config = await getQuizPasscodeConfig();
+  if (!config) {
+    return {
+      ok: false,
+      error: "There's no active passcode right now — ask your coach for a fresh one, or use your invite link.",
+    };
   }
-  if (!checkQuizPasscode(passcode, expected)) {
+  if (!checkQuizPasscode(passcode, config.passcode)) {
     return { ok: false, error: "That's not the right passcode." };
   }
 
-  cookies().set(QUIZ_COOKIE, createQuizSessionValue(), {
+  const ttlMs = sessionTtlMs(config.expiresAt);
+  cookies().set(QUIZ_COOKIE, createQuizSessionValue(ttlMs), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: Math.floor(ttlMs / 1000),
   });
   return { ok: true };
 }

@@ -94,23 +94,26 @@ client. `/admin`, unlike the report links, does require the passcode.
 
 ## Restricting who can take the assessment
 
-By default the assessment (`/`) is open to anyone with the link. To limit it
-to your own clients: go to `/admin` → **Assessment access** → set a
-passcode. Visitors then have to enter it before they can start the quiz
-(remembered for 30 days per browser). Change or remove it any time, no
-redeploy needed — unlike `ADMIN_PASSCODE`, this one lives in the database.
+By default the assessment (`/`) is open to anyone with the link. `/admin`
+has two ways to lock it down — use either or both together:
 
-Two other approaches worth considering if you want tighter control later:
+- **Shared passcode**: set one passcode everyone uses. Simple, one thing to
+  share. Optionally set it to expire after N days.
+- **Invite links**: generate a unique `/start/<token>` link per client
+  instead. No shared secret to leak, you can see who's used their link and
+  how many times, and you can revoke one client's access without affecting
+  anyone else's. Also supports an optional expiry per invite.
 
-- **Per-client invite links**: generate a unique link per client (instead of
-  a shared passcode) that's tied to one report slot. More setup, but no
-  shared secret to leak, and you can see exactly who used which link.
-- **Expiring links**: add an `expiresAt` to the passcode/session so access
-  automatically closes after a course or engagement ends, rather than
-  staying open until you manually remove it.
+Either one being configured locks the assessment down — a visitor without a
+valid passcode or invite session sees a "this assessment is private" screen
+instead of the quiz. If a passcode or invite has an expiry and it passes,
+that specific credential just stops working (the assessment does **not**
+reopen to the public — you'd need to set a new passcode or issue a new
+invite). Sessions granted before an expiry are remembered for up to 30 days
+per browser, capped to whatever's left until that expiry.
 
-Neither is built — the shared passcode is the simplest version that covers
-"keep the general public out." Ask if you want either of the above.
+There's no login for report links (`/r/<id>`) — those stay unguessable-UUID
+gated as before, unaffected by any of this.
 
 ## Notes / things you may want to add later
 

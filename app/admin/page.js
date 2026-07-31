@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_COOKIE, verifySessionValue } from "@/lib/adminSession";
-import { getSetting, QUIZ_PASSCODE_KEY } from "@/lib/settings";
+import { getQuizPasscodeConfigRaw } from "@/lib/settings";
 import AdminLoginForm from "@/components/AdminLoginForm";
 import AdminDashboard from "@/components/AdminDashboard";
 import { BG } from "@/lib/theme";
@@ -16,15 +16,16 @@ export default async function AdminPage() {
   const sessionValue = cookies().get(ADMIN_COOKIE)?.value;
   const authed = verifySessionValue(sessionValue);
 
-  const [reports, quizPasscode] = authed
+  const [reports, quizPasscodeConfig, invites] = authed
     ? await Promise.all([
         prisma.report.findMany({
           orderBy: { createdAt: "desc" },
           select: { id: true, clientName: true, clientEmail: true, createdAt: true, interestScores: true, error: true },
         }),
-        getSetting(QUIZ_PASSCODE_KEY),
+        getQuizPasscodeConfigRaw(),
+        prisma.invite.findMany({ orderBy: { createdAt: "desc" } }),
       ])
-    : [[], null];
+    : [[], null, []];
 
   return (
     <div
@@ -34,7 +35,11 @@ export default async function AdminPage() {
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       }}
     >
-      {authed ? <AdminDashboard reports={reports} quizPasscode={quizPasscode} /> : <AdminLoginForm />}
+      {authed ? (
+        <AdminDashboard reports={reports} quizPasscodeConfig={quizPasscodeConfig} invites={invites} />
+      ) : (
+        <AdminLoginForm />
+      )}
     </div>
   );
 }
