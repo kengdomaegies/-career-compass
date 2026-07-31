@@ -44,3 +44,14 @@ model Invite {
   usedCount   Int       @default(0)
   createdAt   DateTime  @default(now())
 }
+
+// One row per report-generation attempt, keyed by IP — checked and pruned
+// (rows older than the rate-limit window deleted) on every request so this
+// never needs a separate cleanup job.
+model RateLimitHit {
+  id        String   @id @default(uuid())
+  ip        String
+  createdAt DateTime @default(now())
+
+  @@index([ip, createdAt])
+}

@@ -3,12 +3,13 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Search } from "lucide-react";
 import { deleteReportAction, logoutAction, regenerateNarrativeAction } from "@/app/admin/actions";
 import { AREAS } from "@/lib/scoring";
-import { INK, SLATE, CLAY, GREEN, LINE, FONT_SANS } from "@/lib/theme";
+import { INK, SLATE, CLAY, GREEN, LINE, CARD, FONT_SANS } from "@/lib/theme";
 import QuizAccessSettings from "@/components/QuizAccessSettings";
 import InviteManager from "@/components/InviteManager";
+import InsightsSummary from "@/components/InsightsSummary";
 
 function topAreaOf(interestScores) {
   if (!interestScores) return "—";
@@ -20,7 +21,14 @@ export default function AdminDashboard({ reports, quizPasscodeConfig, invites })
   const [items, setItems] = useState(reports);
   const [pendingId, setPendingId] = useState(null);
   const [pendingAction, setPendingAction] = useState(null); // "delete" | "regenerate"
+  const [search, setSearch] = useState("");
   const [, startTransition] = useTransition();
+
+  const filteredItems = items.filter((r) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (r.clientName || "").toLowerCase().includes(q) || (r.clientEmail || "").toLowerCase().includes(q);
+  });
 
   async function handleDelete(id) {
     if (!confirm("Delete this report? This can't be undone.")) return;
@@ -81,12 +89,35 @@ export default function AdminDashboard({ reports, quizPasscodeConfig, invites })
       </div>
       <QuizAccessSettings initialConfig={quizPasscodeConfig} />
       <InviteManager initialInvites={invites} />
+      <InsightsSummary reports={reports} />
       <h2 style={{ fontFamily: FONT_SANS, fontSize: 22, color: INK, marginBottom: 6 }}>Past reports</h2>
-      <p style={{ fontSize: 13, color: SLATE, marginBottom: 24 }}>
+      <p style={{ fontSize: 13, color: SLATE, marginBottom: 16 }}>
         Every report generated in this app, stored so you can revisit them.
       </p>
+      <div style={{ position: "relative", marginBottom: 20 }}>
+        <Search size={15} color={SLATE} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)" }} />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by name or email"
+          style={{
+            width: "100%",
+            padding: "10px 14px 10px 36px",
+            fontSize: 14,
+            border: `1px solid ${LINE}`,
+            borderRadius: 8,
+            fontFamily: "inherit",
+            boxSizing: "border-box",
+            background: CARD,
+          }}
+        />
+      </div>
       {items.length === 0 && <p style={{ color: SLATE, fontSize: 14 }}>No reports saved yet.</p>}
-      {items.map((r) => {
+      {items.length > 0 && filteredItems.length === 0 && (
+        <p style={{ color: SLATE, fontSize: 14 }}>No reports match "{search}".</p>
+      )}
+      {filteredItems.map((r) => {
         const busy = pendingId === r.id;
         return (
           <div

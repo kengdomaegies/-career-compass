@@ -115,13 +115,27 @@ per browser, capped to whatever's left until that expiry.
 There's no login for report links (`/r/<id>`) — those stay unguessable-UUID
 gated as before, unaffected by any of this.
 
+## Reliability & admin extras
+
+- **The gate is enforced on the API, not just the page**: `/api/reports`
+  checks the quiz session cookie itself (when a passcode or invite is
+  configured), so someone can't bypass the gate screen by POSTing directly
+  to the endpoint.
+- **Rate limiting**: max 5 report generations per IP per hour
+  (`lib/rateLimit.js`), backed by a small self-pruning `RateLimitHit` table
+  — no Redis/Upstash needed. Adjust `MAX_PER_WINDOW`/`WINDOW_MS` there if
+  needed.
+- **Quiz progress is saved to localStorage** as the client answers, and
+  restored if they refresh or close the tab partway through. Cleared on
+  successful submission.
+- **Admin dashboard** has a search box (name/email) over the reports list,
+  and an "Across all clients" insights panel showing the distribution of
+  top interest areas and average work-style leans.
+
 ## Notes / things you may want to add later
 
-- No rate limiting on `/api/reports` — fine for personal/low-volume use;
-  add something like Vercel's rate limiting or a CAPTCHA if this becomes
-  public-facing at scale.
-- Links don't expire. If you want that, add an `expiresAt` column and check
-  it in `app/r/[token]/page.js`.
+- Report links (`/r/<id>`) don't expire. If you want that, add an
+  `expiresAt` column and check it in `app/r/[token]/page.js`.
 - The admin session is a single shared passcode, not per-user accounts —
   fine for one coach; if multiple people need separate logins later, that's
   a bigger change (real user accounts + auth provider).

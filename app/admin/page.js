@@ -20,7 +20,15 @@ export default async function AdminPage() {
     ? await Promise.all([
         prisma.report.findMany({
           orderBy: { createdAt: "desc" },
-          select: { id: true, clientName: true, clientEmail: true, createdAt: true, interestScores: true, error: true },
+          select: {
+            id: true,
+            clientName: true,
+            clientEmail: true,
+            createdAt: true,
+            interestScores: true,
+            styleScores: true,
+            error: true,
+          },
         }),
         getQuizPasscodeConfigRaw(),
         prisma.invite.findMany({ orderBy: { createdAt: "desc" } }),

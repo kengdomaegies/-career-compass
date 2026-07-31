@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
@@ -267,6 +267,8 @@ function SubmitError({ message, onRetry }) {
   );
 }
 
+const PROGRESS_KEY = "career-compass-quiz-progress";
+
 export default function CareerCompassQuiz() {
   const router = useRouter();
   const [screen, setScreen] = useState("intro"); // intro | quiz | loading | submit-error
@@ -275,6 +277,49 @@ export default function CareerCompassQuiz() {
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
   const [submitError, setSubmitError] = useState(null);
+  const [restored, setRestored] = useState(false);
+
+  // Restore progress on load — if the tab was closed or refreshed mid-quiz,
+  // this brings the client straight back to where they left off instead of
+  // making them redo the whole thing.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved.clientName) setClientName(saved.clientName);
+        if (saved.clientEmail) setClientEmail(saved.clientEmail);
+        if (saved.answers && Object.keys(saved.answers).length > 0) {
+          setAnswers(saved.answers);
+          setStep(saved.step || 0);
+          setScreen("quiz");
+        }
+      }
+    } catch {
+      // corrupt/unavailable storage — just start fresh
+    } finally {
+      setRestored(true);
+    }
+  }, []);
+
+  // Save progress as it changes, once initial restore has run (so we don't
+  // immediately overwrite saved progress with the pre-restore blank state).
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify({ clientName, clientEmail, answers, step }));
+    } catch {
+      // storage unavailable (private browsing, quota) — progress just won't persist
+    }
+  }, [restored, clientName, clientEmail, answers, step]);
+
+  function clearSavedProgress() {
+    try {
+      localStorage.removeItem(PROGRESS_KEY);
+    } catch {
+      // ignore
+    }
+  }
 
   async function finishQuiz() {
     setScreen("loading");
@@ -289,6 +334,7 @@ export default function CareerCompassQuiz() {
       });
       if (!res.ok) throw new Error(`request failed (${res.status})`);
       const data = await res.json();
+      clearSavedProgress();
       router.push(`/r/${data.id}`);
     } catch (e) {
       setSubmitError(e.message || "unknown error");
