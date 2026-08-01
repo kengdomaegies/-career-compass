@@ -3,11 +3,18 @@
 import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { ADMIN_COOKIE, createSessionValue, checkPasscode, verifySessionValue } from "@/lib/adminSession";
+import {
+  ADMIN_COOKIE,
+  createSessionValue,
+  checkPasscode,
+  verifySessionValue,
+  hashPasscode,
+  verifyPasscodeHash,
+} from "@/lib/adminSession";
 import { generateNarrative } from "@/lib/anthropic";
 import { notifyReportGenerated } from "@/lib/email";
 import { AREAS } from "@/lib/scoring";
-import { deleteSetting, setQuizPasscodeConfig, QUIZ_PASSCODE_KEY } from "@/lib/settings";
+import { deleteSetting, setSetting, getSetting, setQuizPasscodeConfig, QUIZ_PASSCODE_KEY, ADMIN_PASSCODE_HASH_KEY } from "@/lib/settings";
 
 function expiresAtFromDays(days) {
   const n = Number(days);
@@ -22,13 +29,21 @@ function currentOrigin() {
 }
 
 export async function loginAction(passcode) {
-  if (!process.env.ADMIN_PASSCODE || !process.env.ADMIN_SESSION_SECRET) {
-    return {
-      ok: false,
-      error: "Admin login isn't fully configured on the server (missing ADMIN_PASSCODE or ADMIN_SESSION_SECRET).",
-    };
+  if (!process.env.ADMIN_SESSION_SECRET) {
+    return { ok: false, error: "Admin login isn't fully configured on the server (missing ADMIN_SESSION_SECRET)." };
   }
-  if (!checkPasscode(passcode)) {
+
+  // A custom passcode set from the dashboard (stored hashed in the DB)
+  // takes over entirely once set — otherwise fall back to the
+  // ADMIN_PASSCODE environment variable, so login keeps working
+  // out of the box and can never get permanently locked out.
+  const storedHash = await getSetting(ADMIN_PASSCODE_HASH_KEY);
+  const passcodeOk = storedHash ? verifyPasscodeHash(passcode, storedHash) : checkPasscode(passcode);
+
+  if (!storedHash && !process.env.ADMIN_PASSCODE) {
+    return { ok: false, error: "Admin login isn't configured on the server (missing ADMIN_PASSCODE)." };
+  }
+  if (!passcodeOk) {
     return { ok: false, error: "That's not the right passcode." };
   }
 
@@ -146,6 +161,36 @@ export async function deleteInviteAction(id) {
   await prisma.invite.delete({ where: { id } });
   revalidatePath("/admin");
   revalidatePath("/");
+  return { ok: true };
+}
+
+export async function changeAdminPasscodeAction(newPasscode, confirmPasscode) {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Your admin session expired — reload the page and log in again." };
+  }
+
+  const a = typeof newPasscode === "string" ? newPasscode.trim() : "";
+  const b = typeof confirmPasscode === "string" ? confirmPasscode.trim() : "";
+  if (a.length < 6) {
+    return { ok: false, error: "Passcode must be at least 6 characters." };
+  }
+  if (a !== b) {
+    return { ok: false, error: "Passcodes don't match." };
+  }
+
+  await setSetting(ADMIN_PASSCODE_HASH_KEY, hashPasscode(a));
+  return { ok: true };
+}
+
+export async function resetAdminPasscodeAction() {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "Your admin session expired — reload the page and log in again." };
+  }
+  await deleteSetting(ADMIN_PASSCODE_HASH_KEY);
   return { ok: true };
 }
 

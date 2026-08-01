@@ -141,6 +141,26 @@ gated as before, unaffected by any of this.
   than once, their reports get a "(N assessments)" badge and a "History"
   toggle showing a table of their scores over time with deltas from the
   previous attempt — useful for before/after a coaching engagement.
+- **`/admin` is organized into two tabs**: "Clients & Reports" (insights,
+  search, CSV export, the reports list) and "Access & Security" (shared
+  passcode, invite links, admin login passcode).
+
+## Changing the admin login passcode
+
+`/admin` → **Access & Security** → **Admin login passcode**. This
+overrides the `ADMIN_PASSCODE` environment variable entirely once set —
+the old one stops working immediately, same as changing any password. It's
+stored as a salted hash in the database (`Setting` table, key
+`admin_passcode_hash`), not plaintext, since unlike the quiz passcode it's
+never meant to be shared or displayed back.
+
+If you forget a custom passcode you set, there's no "forgot password" flow
+— either:
+- Run `npm run db:studio`, open the `Setting` table, and delete the row
+  with key `admin_passcode_hash`. Login reverts to `ADMIN_PASSCODE` right
+  away.
+- Or, while still logged in, use the **Reset to environment default**
+  button in the same panel before logging out.
 
 ## Notes / things you may want to add later
 
