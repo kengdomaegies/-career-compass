@@ -129,8 +129,18 @@ gated as before, unaffected by any of this.
   restored if they refresh or close the tab partway through. Cleared on
   successful submission.
 - **Admin dashboard** has a search box (name/email) over the reports list,
-  and an "Across all clients" insights panel showing the distribution of
-  top interest areas and average work-style leans.
+  an "Across all clients" insights panel showing the distribution of top
+  interest areas and average work-style leans, and a CSV export button
+  (respects the current search filter).
+- **Failure alerts**: if a narrative fails to generate (initial attempt or
+  a later Regenerate), `OWNER_EMAIL` gets a distinct "⚠ narrative failed"
+  email immediately, instead of only finding out by noticing it in the
+  dashboard later. A banner also appears at the top of `/admin` whenever
+  any report needs attention.
+- **Repeat-client history**: if the same email takes the assessment more
+  than once, their reports get a "(N assessments)" badge and a "History"
+  toggle showing a table of their scores over time with deltas from the
+  previous attempt — useful for before/after a coaching engagement.
 
 ## Notes / things you may want to add later
 

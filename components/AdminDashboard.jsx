@@ -3,17 +3,61 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, RefreshCw, Search } from "lucide-react";
+import { ArrowLeft, RefreshCw, Search, AlertTriangle, Download, History } from "lucide-react";
 import { deleteReportAction, logoutAction, regenerateNarrativeAction } from "@/app/admin/actions";
-import { AREAS } from "@/lib/scoring";
+import { AREAS, STYLE_DIMENSIONS } from "@/lib/scoring";
 import { INK, SLATE, CLAY, GREEN, LINE, CARD, FONT_SANS } from "@/lib/theme";
 import QuizAccessSettings from "@/components/QuizAccessSettings";
 import InviteManager from "@/components/InviteManager";
 import InsightsSummary from "@/components/InsightsSummary";
+import ClientHistory from "@/components/ClientHistory";
 
 function topAreaOf(interestScores) {
   if (!interestScores) return "—";
   return AREAS.slice().sort((a, b) => interestScores[b.key] - interestScores[a.key])[0].key;
+}
+
+function emailKey(clientEmail) {
+  return (clientEmail || "").trim().toLowerCase();
+}
+
+function csvEscape(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+}
+
+function reportsToCsv(reports) {
+  const headers = [
+    "Name",
+    "Email",
+    "Date",
+    "Top area",
+    "Profile type",
+    ...AREAS.map((a) => a.key),
+    ...STYLE_DIMENSIONS.map((d) => `${d.poleA} vs ${d.poleB}`),
+    "Error",
+  ];
+  const rows = reports.map((r) => [
+    r.clientName || "",
+    r.clientEmail || "",
+    new Date(r.createdAt).toLocaleDateString(),
+    r.interestScores ? topAreaOf(r.interestScores) : "",
+    r.aiContent?.typeName || "",
+    ...AREAS.map((a) => r.interestScores?.[a.key] ?? ""),
+    ...STYLE_DIMENSIONS.map((d) => r.styleScores?.[d.key] ?? ""),
+    r.error || "",
+  ]);
+  return [headers, ...rows].map((row) => row.map(csvEscape).join(",")).join("\n");
+}
+
+function downloadCsv(reports) {
+  const csv = reportsToCsv(reports);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `career-compass-reports-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function AdminDashboard({ reports, quizPasscodeConfig, invites }) {
@@ -22,12 +66,24 @@ export default function AdminDashboard({ reports, quizPasscodeConfig, invites })
   const [pendingId, setPendingId] = useState(null);
   const [pendingAction, setPendingAction] = useState(null); // "delete" | "regenerate"
   const [search, setSearch] = useState("");
+  const [expandedEmail, setExpandedEmail] = useState(null);
   const [, startTransition] = useTransition();
 
   const filteredItems = items.filter((r) => {
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return (r.clientName || "").toLowerCase().includes(q) || (r.clientEmail || "").toLowerCase().includes(q);
+  });
+
+  const errorCount = items.filter((r) => r.error).length;
+
+  // Group by email so repeat clients (retaking the assessment) can be
+  // compared over time — only meaningful when an email was given.
+  const groupsByEmail = {};
+  items.forEach((r) => {
+    const key = emailKey(r.clientEmail);
+    if (!key) return;
+    (groupsByEmail[key] ||= []).push(r);
   });
 
   async function handleDelete(id) {
@@ -87,10 +143,55 @@ export default function AdminDashboard({ reports, quizPasscodeConfig, invites })
           Log out
         </button>
       </div>
+
+      {errorCount > 0 && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "rgba(168,85,63,0.08)",
+            border: `1px solid ${CLAY}`,
+            borderRadius: 8,
+            padding: "12px 16px",
+            marginBottom: 20,
+            fontSize: 13,
+            color: INK,
+          }}
+        >
+          <AlertTriangle size={16} color={CLAY} style={{ flexShrink: 0 }} />
+          <span>
+            {errorCount} report{errorCount === 1 ? "" : "s"} need attention — narrative generation failed.
+            Find {errorCount === 1 ? "it" : "them"} below and click Regenerate.
+          </span>
+        </div>
+      )}
+
       <QuizAccessSettings initialConfig={quizPasscodeConfig} />
       <InviteManager initialInvites={invites} />
       <InsightsSummary reports={reports} />
-      <h2 style={{ fontFamily: FONT_SANS, fontSize: 22, color: INK, marginBottom: 6 }}>Past reports</h2>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+        <h2 style={{ fontFamily: FONT_SANS, fontSize: 22, color: INK }}>Past reports</h2>
+        <button
+          onClick={() => downloadCsv(filteredItems)}
+          disabled={filteredItems.length === 0}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: "none",
+            border: `1px solid ${LINE}`,
+            borderRadius: 6,
+            padding: "6px 12px",
+            fontSize: 12.5,
+            color: filteredItems.length === 0 ? "#9CA3AF" : INK,
+            cursor: filteredItems.length === 0 ? "default" : "pointer",
+          }}
+        >
+          <Download size={13} /> Export CSV
+        </button>
+      </div>
       <p style={{ fontSize: 13, color: SLATE, marginBottom: 16 }}>
         Every report generated in this app, stored so you can revisit them.
       </p>
@@ -119,6 +220,10 @@ export default function AdminDashboard({ reports, quizPasscodeConfig, invites })
       )}
       {filteredItems.map((r) => {
         const busy = pendingId === r.id;
+        const key = emailKey(r.clientEmail);
+        const group = key ? groupsByEmail[key] : null;
+        const isRepeat = group && group.length > 1;
+        const historyOpen = isRepeat && expandedEmail === key;
         return (
           <div
             key={r.id}
@@ -129,13 +234,39 @@ export default function AdminDashboard({ reports, quizPasscodeConfig, invites })
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: INK }}>{r.clientName || "Unnamed"}</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: INK }}>
+                  {r.clientName || "Unnamed"}
+                  {isRepeat && (
+                    <span style={{ fontSize: 11, fontWeight: 500, color: SLATE, marginLeft: 8 }}>
+                      ({group.length} assessments)
+                    </span>
+                  )}
+                </div>
                 <div style={{ fontSize: 12.5, color: SLATE, overflow: "hidden", textOverflow: "ellipsis" }}>
                   {r.clientEmail || "no email"} · {new Date(r.createdAt).toLocaleDateString()} · Top area:{" "}
                   {topAreaOf(r.interestScores)}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                {isRepeat && (
+                  <button
+                    onClick={() => setExpandedEmail(historyOpen ? null : key)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
+                      background: "none",
+                      border: `1px solid ${LINE}`,
+                      borderRadius: 6,
+                      padding: "6px 12px",
+                      fontSize: 12.5,
+                      color: INK,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <History size={12} /> {historyOpen ? "Hide history" : "History"}
+                  </button>
+                )}
                 {r.error && (
                   <button
                     onClick={() => handleRegenerate(r.id)}
@@ -193,6 +324,7 @@ export default function AdminDashboard({ reports, quizPasscodeConfig, invites })
                 Narrative failed: {r.error}
               </div>
             )}
+            {historyOpen && <ClientHistory reports={group} />}
           </div>
         );
       })}

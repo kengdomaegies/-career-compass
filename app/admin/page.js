@@ -27,6 +27,7 @@ export default async function AdminPage() {
             createdAt: true,
             interestScores: true,
             styleScores: true,
+            aiContent: true,
             error: true,
           },
         }),

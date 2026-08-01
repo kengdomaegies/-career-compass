@@ -1,10 +1,11 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { ADMIN_COOKIE, createSessionValue, checkPasscode, verifySessionValue } from "@/lib/adminSession";
 import { generateNarrative } from "@/lib/anthropic";
+import { notifyReportGenerated } from "@/lib/email";
 import { AREAS } from "@/lib/scoring";
 import { deleteSetting, setQuizPasscodeConfig, QUIZ_PASSCODE_KEY } from "@/lib/settings";
 
@@ -12,6 +13,12 @@ function expiresAtFromDays(days) {
   const n = Number(days);
   if (!n || n <= 0) return null;
   return new Date(Date.now() + n * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function currentOrigin() {
+  const host = headers().get("host");
+  const protocol = host?.startsWith("localhost") ? "http" : "https";
+  return `${protocol}://${host}`;
 }
 
 export async function loginAction(passcode) {
@@ -72,7 +79,10 @@ export async function regenerateNarrativeAction(id) {
     return { ok: true };
   } catch (e) {
     const error = e?.message || "unknown error";
-    await prisma.report.update({ where: { id }, data: { error } });
+    const reportUrl = `${currentOrigin()}/r/${id}`;
+    const alertLog = await notifyReportGenerated({ clientName: report.clientName, reportUrl, error });
+    const existingLog = Array.isArray(report.emailLog) ? report.emailLog : [];
+    await prisma.report.update({ where: { id }, data: { error, emailLog: [...existingLog, ...alertLog] } });
     revalidatePath("/admin");
     return { ok: false, error };
   }

@@ -73,7 +73,7 @@ export async function POST(req) {
   });
 
   const reportUrl = new URL(`/r/${report.id}`, req.nextUrl.origin).toString();
-  const emailLog = await notifyReportGenerated({ clientName: safeClientName, reportUrl });
+  const emailLog = await notifyReportGenerated({ clientName: safeClientName, reportUrl, error });
   await prisma.report.update({ where: { id: report.id }, data: { emailLog } });
 
   return NextResponse.json({ id: report.id });
