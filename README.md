@@ -129,7 +129,10 @@ gated as before, unaffected by any of this.
   needed.
 - **Quiz progress is saved to localStorage** as the client answers, and
   restored if they refresh or close the tab partway through. Cleared on
-  successful submission.
+  successful submission, discarded automatically if it's more than 24 hours
+  old (so an abandoned attempt from weeks ago isn't resumed into by mistake),
+  and there's also a "Start over" link on the warm-up and quiz screens for
+  anyone who gets stuck or wants a clean run.
 - **Admin dashboard** has a search box (name/email) over the reports list,
   an "Across all clients" insights panel showing the distribution of top
   interest areas and average work-style leans, and a CSV export button

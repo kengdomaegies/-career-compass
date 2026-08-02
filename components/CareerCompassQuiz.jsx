@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
+import { ArrowRight, ArrowLeft, Loader2, AlertTriangle, RotateCcw } from "lucide-react";
 import { ALL_QUESTIONS, INTEREST_QUESTIONS, LIKERT, computeInterestScores, computeStyleScores } from "@/lib/scoring";
 import { PROFILE_QUESTIONS } from "@/lib/profileQuestions";
 import { INK, BG, GREEN, GREEN_DARK, SLATE, CARD, LINE, CLAY, FONT_DISPLAY } from "@/lib/theme";
@@ -132,22 +132,52 @@ function Intro({ onStart, clientName, setClientName, clientEmail, setClientEmail
   );
 }
 
-function ProfileIntake({ profile, setProfile, onContinue }) {
+function StartOverLink({ onRestart }) {
+  function handleClick() {
+    if (window.confirm("Start over? This will clear your answers so far.")) {
+      onRestart();
+    }
+  }
+  return (
+    <button
+      onClick={handleClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        marginLeft: "auto",
+        background: "none",
+        border: "none",
+        color: SLATE,
+        cursor: "pointer",
+        fontSize: 12.5,
+        fontFamily: "inherit",
+        padding: 0,
+      }}
+    >
+      <RotateCcw size={12} /> Start over
+    </button>
+  );
+}
+
+function ProfileIntake({ profile, setProfile, onContinue, onRestart }) {
   const allAnswered = PROFILE_QUESTIONS.every((q) => profile[q.key]);
 
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: "48px 24px" }}>
-      <div
-        style={{
-          fontSize: 12,
-          color: GREEN_DARK,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          marginBottom: 6,
-        }}
-      >
-        Before we begin
+      <div style={{ display: "flex", marginBottom: 6 }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: GREEN_DARK,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          Before we begin
+        </div>
+        <StartOverLink onRestart={onRestart} />
       </div>
       <h2 style={{ fontFamily: "Georgia, serif", fontSize: 24, color: INK, lineHeight: 1.4, marginBottom: 8 }}>
         A little about you
@@ -209,7 +239,7 @@ function ProfileIntake({ profile, setProfile, onContinue }) {
   );
 }
 
-function Quiz({ answers, setAnswers, step, setStep, onFinish }) {
+function Quiz({ answers, setAnswers, step, setStep, onFinish, onRestart }) {
   const q = ALL_QUESTIONS[step];
   const selected = answers[step];
   const isFirstStyleQuestion = q.type === "style" && step === INTEREST_QUESTIONS.length;
@@ -228,17 +258,19 @@ function Quiz({ answers, setAnswers, step, setStep, onFinish }) {
   return (
     <div style={{ maxWidth: 560, margin: "0 auto", padding: "48px 24px" }}>
       <ProgressRibbon step={step} total={ALL_QUESTIONS.length} />
-      <div
-        style={{
-          fontSize: 12,
-          color: GREEN_DARK,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          marginBottom: 6,
-        }}
-      >
-        {q.type === "interest" ? "Part 1 · Interests" : "Part 2 · Work style"}
+      <div style={{ display: "flex", marginBottom: 6 }}>
+        <div
+          style={{
+            fontSize: 12,
+            color: GREEN_DARK,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
+          {q.type === "interest" ? "Part 1 · Interests" : "Part 2 · Work style"}
+        </div>
+        <StartOverLink onRestart={onRestart} />
       </div>
       {isFirstStyleQuestion && (
         <p style={{ fontSize: 13, color: SLATE, marginBottom: 14 }}>
@@ -364,6 +396,10 @@ function SubmitError({ message, onRetry }) {
 }
 
 const PROGRESS_KEY = "career-compass-quiz-progress";
+// Abandoned sessions older than this are treated as stale and discarded
+// rather than resumed — a client who started weeks ago and comes back
+// almost certainly wants a fresh run, not their half-finished answers.
+const PROGRESS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export default function CareerCompassQuiz() {
   const router = useRouter();
@@ -384,6 +420,11 @@ export default function CareerCompassQuiz() {
       const raw = localStorage.getItem(PROGRESS_KEY);
       if (raw) {
         const saved = JSON.parse(raw);
+        if (typeof saved.savedAt === "number" && Date.now() - saved.savedAt > PROGRESS_MAX_AGE_MS) {
+          localStorage.removeItem(PROGRESS_KEY);
+          setRestored(true);
+          return;
+        }
         if (saved.clientName) setClientName(saved.clientName);
         if (saved.clientEmail) setClientEmail(saved.clientEmail);
         if (saved.profile) setProfile(saved.profile);
@@ -415,7 +456,7 @@ export default function CareerCompassQuiz() {
     try {
       localStorage.setItem(
         PROGRESS_KEY,
-        JSON.stringify({ clientName, clientEmail, profile, answers, step, screen })
+        JSON.stringify({ clientName, clientEmail, profile, answers, step, screen, savedAt: Date.now() })
       );
     } catch {
       // storage unavailable (private browsing, quota) — progress just won't persist
@@ -428,6 +469,14 @@ export default function CareerCompassQuiz() {
     } catch {
       // ignore
     }
+  }
+
+  function restartQuiz() {
+    clearSavedProgress();
+    setProfile({});
+    setAnswers({});
+    setStep(0);
+    setScreen("intro");
   }
 
   async function finishQuiz() {
@@ -469,10 +518,22 @@ export default function CareerCompassQuiz() {
         />
       )}
       {screen === "profile" && (
-        <ProfileIntake profile={profile} setProfile={setProfile} onContinue={() => setScreen("quiz")} />
+        <ProfileIntake
+          profile={profile}
+          setProfile={setProfile}
+          onContinue={() => setScreen("quiz")}
+          onRestart={restartQuiz}
+        />
       )}
       {screen === "quiz" && (
-        <Quiz answers={answers} setAnswers={setAnswers} step={step} setStep={setStep} onFinish={finishQuiz} />
+        <Quiz
+          answers={answers}
+          setAnswers={setAnswers}
+          step={step}
+          setStep={setStep}
+          onFinish={finishQuiz}
+          onRestart={restartQuiz}
+        />
       )}
       {screen === "loading" && <Loading />}
       {screen === "submit-error" && <SubmitError message={submitError} onRetry={finishQuiz} />}
