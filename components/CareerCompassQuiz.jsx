@@ -45,7 +45,7 @@ function Intro({ onStart, clientName, setClientName, clientEmail, setClientEmail
       </h1>
       <div style={{ textAlign: "left", marginBottom: 32 }}>
         <p style={{ color: SLATE, fontSize: 15, lineHeight: 1.7, marginBottom: 14 }}>
-          Feeling unsure about your next career move? You're not alone — and that's exactly why this
+          Hi there, feeling unsure about your next career move? You're not alone — and that's exactly why this
           assessment exists. The Career Compass is a simple, guided set of questions designed to help you
           discover your strengths, interests, and what truly matters to you in a career. There are no right
           or wrong answers, so just relax and answer honestly. It takes about 6 minutes, and every question
