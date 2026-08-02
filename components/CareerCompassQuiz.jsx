@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Loader2, AlertTriangle } from "lucide-react";
 import { ALL_QUESTIONS, INTEREST_QUESTIONS, LIKERT, computeInterestScores, computeStyleScores } from "@/lib/scoring";
+import { PROFILE_QUESTIONS } from "@/lib/profileQuestions";
 import { INK, BG, GREEN, GREEN_DARK, SLATE, CARD, LINE, CLAY, FONT_DISPLAY } from "@/lib/theme";
 import Logo from "@/components/Logo";
 
@@ -42,10 +43,28 @@ function Intro({ onStart, clientName, setClientName, clientEmail, setClientEmail
       >
         Career Compass
       </h1>
-      <p style={{ color: SLATE, fontSize: 16, lineHeight: 1.6, marginBottom: 32 }}>
-        A short assessment of what draws you to certain kinds of work, and how you tend to operate day to
-        day, then a personalized report built from your answers.
-      </p>
+      <div style={{ textAlign: "left", marginBottom: 32 }}>
+        <p style={{ color: SLATE, fontSize: 15, lineHeight: 1.7, marginBottom: 14 }}>
+          Feeling unsure about your next career move? You're not alone — and that's exactly why this
+          assessment exists. The Career Compass is a simple, guided set of questions designed to help you
+          discover your strengths, interests, and what truly matters to you in a career. There are no right
+          or wrong answers, so just relax and answer honestly. It takes about 6 minutes, and every question
+          brings you a step closer to understanding yourself better.
+        </p>
+        <p style={{ color: SLATE, fontSize: 15, lineHeight: 1.7, marginBottom: 14 }}>
+          By the end, you'll walk away with a clearer picture of the career directions that fit you best —
+          plus personalised insights we'll explore together in your coaching session. Whether you're
+          choosing what to study, hunting for your first job, or thinking about a career switch, this is
+          your starting point for a plan that's built around you. Ready? Let's find your direction!
+        </p>
+        <p style={{ color: SLATE, fontSize: 13.5, lineHeight: 1.6 }}>
+          If you'd like more detail on the thinking behind it, you can check out{" "}
+          <Link href="/methodology" style={{ color: GREEN_DARK }}>
+            how this assessment works
+          </Link>
+          .
+        </p>
+      </div>
       <input
         value={clientName}
         onChange={(e) => setClientName(e.target.value)}
@@ -96,7 +115,7 @@ function Intro({ onStart, clientName, setClientName, clientEmail, setClientEmail
         Begin <ArrowRight size={16} />
       </button>
       <p style={{ color: SLATE, fontSize: 12, marginTop: 24 }}>
-        {ALL_QUESTIONS.length} quick questions, about 5 minutes.
+        A few quick questions about you, then {ALL_QUESTIONS.length} short ones — about 6 minutes total.
       </p>
       <div style={{ display: "flex", justifyContent: "center", gap: 18, marginTop: 14 }}>
         <Link
@@ -109,6 +128,83 @@ function Intro({ onStart, clientName, setClientName, clientEmail, setClientEmail
           Admin
         </Link>
       </div>
+    </div>
+  );
+}
+
+function ProfileIntake({ profile, setProfile, onContinue }) {
+  const allAnswered = PROFILE_QUESTIONS.every((q) => profile[q.key]);
+
+  return (
+    <div style={{ maxWidth: 560, margin: "0 auto", padding: "48px 24px" }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: GREEN_DARK,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          marginBottom: 6,
+        }}
+      >
+        Before we begin
+      </div>
+      <h2 style={{ fontFamily: "Georgia, serif", fontSize: 24, color: INK, lineHeight: 1.4, marginBottom: 8 }}>
+        A little about you
+      </h2>
+      <p style={{ fontSize: 14, color: SLATE, lineHeight: 1.6, marginBottom: 32 }}>
+        This just helps set the stage — there's no right or wrong answer here either.
+      </p>
+      {PROFILE_QUESTIONS.map((q) => (
+        <div key={q.key} style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: INK, marginBottom: q.subtext ? 2 : 10 }}>
+            {q.text}
+          </div>
+          {q.subtext && <div style={{ fontSize: 12.5, color: SLATE, marginBottom: 10 }}>{q.subtext}</div>}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {q.options.map((opt) => {
+              const selected = profile[q.key] === opt;
+              return (
+                <button
+                  key={opt}
+                  onClick={() => setProfile({ ...profile, [q.key]: opt })}
+                  style={{
+                    padding: "9px 14px",
+                    borderRadius: 20,
+                    border: `1.5px solid ${selected ? GREEN : LINE}`,
+                    background: selected ? "rgba(44,107,70,0.08)" : CARD,
+                    color: INK,
+                    fontSize: 13.5,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <button
+        onClick={onContinue}
+        disabled={!allAnswered}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          background: allAnswered ? INK : LINE,
+          color: allAnswered ? BG : "#9CA3AF",
+          border: "none",
+          borderRadius: 8,
+          padding: "13px 26px",
+          fontSize: 15,
+          fontWeight: 600,
+          cursor: allAnswered ? "pointer" : "default",
+        }}
+      >
+        Continue <ArrowRight size={16} />
+      </button>
     </div>
   );
 }
@@ -271,9 +367,10 @@ const PROGRESS_KEY = "career-compass-quiz-progress";
 
 export default function CareerCompassQuiz() {
   const router = useRouter();
-  const [screen, setScreen] = useState("intro"); // intro | quiz | loading | submit-error
+  const [screen, setScreen] = useState("intro"); // intro | profile | quiz | loading | submit-error
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
+  const [profile, setProfile] = useState({});
   const [answers, setAnswers] = useState({});
   const [step, setStep] = useState(0);
   const [submitError, setSubmitError] = useState(null);
@@ -289,10 +386,16 @@ export default function CareerCompassQuiz() {
         const saved = JSON.parse(raw);
         if (saved.clientName) setClientName(saved.clientName);
         if (saved.clientEmail) setClientEmail(saved.clientEmail);
-        if (saved.answers && Object.keys(saved.answers).length > 0) {
-          setAnswers(saved.answers);
-          setStep(saved.step || 0);
+        if (saved.profile) setProfile(saved.profile);
+        if (saved.answers) setAnswers(saved.answers);
+        if (typeof saved.step === "number") setStep(saved.step);
+        // Trust the saved screen first — inferring purely from answer/profile
+        // counts breaks the case where someone finished the profile step but
+        // hadn't answered a single quiz question yet (answers is still {}).
+        if (saved.screen === "quiz") {
           setScreen("quiz");
+        } else if (saved.screen === "profile" || (saved.profile && Object.keys(saved.profile).length > 0)) {
+          setScreen("profile");
         }
       }
     } catch {
@@ -304,14 +407,20 @@ export default function CareerCompassQuiz() {
 
   // Save progress as it changes, once initial restore has run (so we don't
   // immediately overwrite saved progress with the pre-restore blank state).
+  // Only persist resumable screens — "loading"/"submit-error" are transient
+  // and "intro" has nothing worth resuming into.
   useEffect(() => {
     if (!restored) return;
+    if (screen !== "profile" && screen !== "quiz") return;
     try {
-      localStorage.setItem(PROGRESS_KEY, JSON.stringify({ clientName, clientEmail, answers, step }));
+      localStorage.setItem(
+        PROGRESS_KEY,
+        JSON.stringify({ clientName, clientEmail, profile, answers, step, screen })
+      );
     } catch {
       // storage unavailable (private browsing, quota) — progress just won't persist
     }
-  }, [restored, clientName, clientEmail, answers, step]);
+  }, [restored, clientName, clientEmail, profile, answers, step, screen]);
 
   function clearSavedProgress() {
     try {
@@ -330,7 +439,7 @@ export default function CareerCompassQuiz() {
       const res = await fetch("/api/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientName, clientEmail, interestScores, styleScores }),
+        body: JSON.stringify({ clientName, clientEmail, profile, interestScores, styleScores }),
       });
       if (!res.ok) throw new Error(`request failed (${res.status})`);
       const data = await res.json();
@@ -352,12 +461,15 @@ export default function CareerCompassQuiz() {
     >
       {screen === "intro" && (
         <Intro
-          onStart={() => setScreen("quiz")}
+          onStart={() => setScreen("profile")}
           clientName={clientName}
           setClientName={setClientName}
           clientEmail={clientEmail}
           setClientEmail={setClientEmail}
         />
+      )}
+      {screen === "profile" && (
+        <ProfileIntake profile={profile} setProfile={setProfile} onContinue={() => setScreen("quiz")} />
       )}
       {screen === "quiz" && (
         <Quiz answers={answers} setAnswers={setAnswers} step={step} setStep={setStep} onFinish={finishQuiz} />

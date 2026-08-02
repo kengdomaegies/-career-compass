@@ -9,7 +9,9 @@ gives each client a private link to view (and print) their own report.
 - **Frontend/backend**: Next.js (App Router). The quiz runs client-side; the
   Claude call, database, and email sending live behind server routes/actions
   so secrets never reach the browser.
-- `app/page.js` — the quiz (intro → questions → submit).
+- `app/page.js` — the quiz (intro → warm-up questions → assessment → submit).
+  Warm-up answers (`lib/profileQuestions.js`) aren't scored — they're saved
+  on the report for the coach's own context, visible via CSV export.
 - `app/methodology/page.js` — "how this assessment works" (RIASEC + work-style
   explanation), also appended as a printed appendix on every report.
 - `app/api/reports/route.js` — receives computed scores, calls Claude

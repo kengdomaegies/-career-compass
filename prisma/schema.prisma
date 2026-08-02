@@ -13,6 +13,10 @@ model Report {
   id             String   @id @default(uuid())
   clientName     String?
   clientEmail    String?
+  // Warm-up context questions (gender, age group, life situation, reason
+  // for visiting, career clarity) — not scored, just for the coach's
+  // reference. { gender, ageGroup, lifeSituation, reason, clarity }
+  profile        Json?
   interestScores Json
   styleScores    Json
   aiContent      Json?

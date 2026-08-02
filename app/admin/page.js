@@ -24,6 +24,7 @@ export default async function AdminPage() {
             id: true,
             clientName: true,
             clientEmail: true,
+            profile: true,
             createdAt: true,
             interestScores: true,
             styleScores: true,

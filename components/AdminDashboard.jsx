@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft, RefreshCw, Search, AlertTriangle, Download, History } from "lucide-react";
 import { deleteReportAction, logoutAction, regenerateNarrativeAction } from "@/app/admin/actions";
 import { AREAS, STYLE_DIMENSIONS } from "@/lib/scoring";
+import { PROFILE_QUESTIONS } from "@/lib/profileQuestions";
 import { INK, SLATE, CLAY, GREEN, LINE, CARD, FONT_SANS } from "@/lib/theme";
 import QuizAccessSettings from "@/components/QuizAccessSettings";
 import InviteManager from "@/components/InviteManager";
@@ -36,6 +37,7 @@ function reportsToCsv(reports) {
     "Name",
     "Email",
     "Date",
+    ...PROFILE_QUESTIONS.map((q) => q.text),
     "Top area",
     "Profile type",
     ...AREAS.map((a) => a.key),
@@ -46,6 +48,7 @@ function reportsToCsv(reports) {
     r.clientName || "",
     r.clientEmail || "",
     new Date(r.createdAt).toLocaleDateString(),
+    ...PROFILE_QUESTIONS.map((q) => r.profile?.[q.key] || ""),
     r.interestScores ? topAreaOf(r.interestScores) : "",
     r.aiContent?.typeName || "",
     ...AREAS.map((a) => r.interestScores?.[a.key] ?? ""),
